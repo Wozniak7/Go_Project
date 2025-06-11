@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoURL - Encurtador de URL</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #1a202c;
+            margin-bottom: 1.5rem;
+        }
+
+        input,
+        button {
+            border-radius: 0.5rem;
+        }
+
+        button {
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .copy-button {
+            background-color: #4CAF50;
+        }
+
+        .copy-button:hover {
+            background-color: #45a049;
+        }
+
+        .shorten-button {
+            background-color: #3b82f6;
+        }
+
+        .shorten-button:hover {
+            background-color: #2563eb;
+        }
+
+        .result-box {
+            background-color: #e2e8f0;
+            color: #2d3748;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            word-wrap: break-word;
+        }
+
+        .message-box {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .message-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .message-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message-info {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">🔗 GoURL - Encurtador de URL</h1>
+        <p class="text-gray-600 mb-6">Cole uma URL longa para obter uma versão curta e compartilhável.</p>
+
+        <div class="mb-4">
+            <label for="longUrlInput" class="block text-gray-700 text-sm font-bold mb-2 sr-only">URL Longa:</label>
+            <input type="url" id="longUrlInput"
+                class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                placeholder="Cole sua URL longa aqui (ex: https://muito.longa.com/pagina/com/varios/parametros)">
+        </div>
+
+        <button id="shortenButton"
+            class="shorten-button text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline w-full mb-4">
+            Encurtar URL
+        </button>
+
+        <div id="resultArea" class="hidden">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">Sua URL Curta:</h2>
+            <div class="result-box text-blue-800 font-mono text-lg mb-4" id="shortUrlDisplay"></div>
+            <button id="copyButton"
+                class="copy-button text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline">
+                Copiar URL Curta
+            </button>
+        </div>
+
+        <div id="messageBox" class="message-box hidden"></div>
+    </div>
+
+    <script>
+        const longUrlInput = document.getElementById('longUrlInput');
+        const shortenButton = document.getElementById('shortenButton');
+        const resultArea = document.getElementById('resultArea');
+        const shortUrlDisplay = document.getElementById('shortUrlDisplay');
+        const copyButton = document.getElementById('copyButton');
+        const messageBox = document.getElementById('messageBox');
+
+        function showMessage(type, message) {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box'; 
+            messageBox.classList.add('block');
+            messageBox.classList.add(`message-${type}`);
+        }
+
+        function hideMessage() {
+            messageBox.classList.add('hidden');
+        }
+
+        shortenButton.addEventListener('click', async () => {
+            hideMessage();
+            resultArea.classList.add('hidden'); 
+
+            const longUrl = longUrlInput.value.trim();
+            if (!longUrl) {
+                showMessage('error', 'Por favor, insira uma URL longa.');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8080/shorten', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ long_url: longUrl }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { 
+                    shortUrlDisplay.textContent = data.short_url;
+                    resultArea.classList.remove('hidden');
+                    showMessage('success', 'URL encurtada com sucesso!');
+                } else { 
+                    const errorMessage = data.error || response.statusText || 'Erro desconhecido ao encurtar URL.';
+                    showMessage('error', `Erro: ${errorMessage}`);
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                showMessage('error', 'Não foi possível conectar ao servidor. Certifique-se de que a API GoURL está rodando (porta 8080).');
+            }
+        });
+
+        copyButton.addEventListener('click', () => {
+            const textToCopy = shortUrlDisplay.textContent;
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    showMessage('info', 'URL copiada para a área de transferência!');
+                })
+                .catch(err => {
+                    console.error('Erro ao copiar:', err);
+                    showMessage('error', 'Erro ao copiar a URL. Por favor, copie manualmente.');
+                });
+        });
+    </script>
+</body>
+
+</html>
